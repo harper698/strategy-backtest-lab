@@ -54,6 +54,17 @@ def test_unrepresentable_cagr_returns_null():
     json.dumps(metrics, allow_nan=False)
 
 
+@pytest.mark.parametrize("start, end, rows, expected", [
+    (1e20, 1.0, 21, -0.9),
+    (1e-200, 1e200, 401, 9.0),
+])
+def test_finite_cagr_survives_extreme_cumulative_return(start, end, rows, expected):
+    with np.errstate(over="ignore"):
+        metrics = performance_metrics(pd.Series(np.geomspace(start, end, rows)), bars_per_year=1)
+    assert metrics["cagr"] == pytest.approx(expected)
+    json.dumps(metrics, allow_nan=False)
+
+
 def test_constant_growth_has_undefined_sharpe_despite_roundoff():
     metrics = performance_metrics(pd.Series([100.0 * 1.1**i for i in range(8)]))
     assert metrics["sharpe_ratio"] is None

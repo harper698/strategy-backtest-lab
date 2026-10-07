@@ -37,9 +37,15 @@ def performance_metrics(
     if not np.isfinite(returns).all():
         raise ValueError("equity produces nonfinite interval returns")
     intervals = len(returns)
-    total_return = float(values.iloc[-1] / values.iloc[0] - 1)
+    growth = float(values.iloc[-1]) / float(values.iloc[0])
+    total_return = growth - 1
     try:
-        cagr = _finite(math.expm1(math.log1p(total_return) * bars_per_year / intervals))
+        # Subtracting 1 can round a tiny growth ratio to a total return of -1.
+        # Endpoint logs also preserve finite annualized results if the ratio overflows.
+        log_growth = math.log(growth) if math.isfinite(growth) and growth > 0 else (
+            math.log(float(values.iloc[-1])) - math.log(float(values.iloc[0]))
+        )
+        cagr = _finite(math.expm1(log_growth * bars_per_year / intervals))
     except (OverflowError, ValueError):
         cagr = None
     standard_deviation = float(returns.std(ddof=1)) if intervals >= 2 else math.nan
